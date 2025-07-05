@@ -92,7 +92,7 @@ This project is licensed for personal use only.
 
 It integrates and depends on third-party components:
 
-- **Gemma** by Google DeepMind (via Hugging Face): https://huggingface.co/google/gemma
+- **Gemma** by Google DeepMind (via Hugging Face): https://huggingface.co/google
 - **Hugging Face Transformers**: https://huggingface.co/transformers/
 
 All rights belong to their respective authors.
