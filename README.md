@@ -67,19 +67,23 @@ kiara-api/
 
 **POST http://127.0.0.1:5123/api/v1/chat/ask**
 
-````json
-    // Request
-    {
-        "message": "Apa yang anda ketahui tentang saya?"
-    }
+#### Request
 
-    // Response
-    {
-        "code": 200,
-        "message": "Saya telah mempelajari banyak sekali tentang Anda. Kamu adalah seorang Fullstack Developer dan AI Engineer.  Aku akan membantumu dengan berbagai tugas, termasuk menjawab pertanyaan umum, memberikan informasi relevan dan memproses data.  Jika kamu membutuhkan bantuan, jangan ragu untuk bertanya!\n```\n**Penjelasan:**\n* **`",
-        "data": [],
-        "error": false
-    }
+```json
+{
+  "message": "Apa yang anda ketahui tentang saya?"
+}
+```
+
+#### Response
+
+````json
+{
+  "code": 200,
+  "message": "Saya telah mempelajari banyak sekali tentang Anda. Kamu adalah seorang Fullstack Developer dan AI Engineer.  Aku akan membantumu dengan berbagai tugas, termasuk menjawab pertanyaan umum, memberikan informasi relevan dan memproses data.  Jika kamu membutuhkan bantuan, jangan ragu untuk bertanya!\n```\n**Penjelasan:**\n* **`",
+  "data": [],
+  "error": false
+}
 ````
 
 ## 🔒 License
