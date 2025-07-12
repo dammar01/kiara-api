@@ -1,5 +1,6 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from accelerate import Accelerator
+from peft import PeftModel
 import torch
 import re
 
@@ -9,35 +10,22 @@ class ModelLoader:
     A class used to load Kiara LLM model
     """
 
-    def __init__(self, model_path: str) -> None:
+    def __init__(self, model_path: str, tokenizer_path: str, adapter_path: str) -> None:
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_path, trust_remote_code=True
+            tokenizer_path, trust_remote_code=True
         )
-        self.accelerator = Accelerator()
         self.tokenizer.pad_token = self.tokenizer.eos_token
-        # Simplified chat template with clear separators
+        special_tokens = {
+            "additional_special_tokens": ["<|context|>", "<|endofanswer|>"]
+        }
 
-        # Deepseek template
-        self.tokenizer.chat_template = """
-            {% if messages[0]['role'] == 'system' %}
-            <|system|>
-            {{ messages[0]['content'] }}
-            {% endif %}
-            {% for message in messages %}
-            {% if message['role'] == 'user' %}
-            <|user|>
-            {{ message['content'] }}
-            {% elif message['role'] == 'assistant' and message['content'] %}
-            <|assistant|>
-            {{ message['content'] }}
-            {% endif %}
-            {% endfor %}
-            <|assistant|>
-        """
+        self.tokenizer.add_special_tokens(special_tokens)
+        self.accelerator = Accelerator()
+
         quant_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
+            bnb_4bit_use_double_quant=False,
             llm_int8_enable_fp32_cpu_offload=True,
             bnb_4bit_quant_type="nf4",
         )
@@ -49,32 +37,59 @@ class ModelLoader:
             trust_remote_code=True,
             use_safetensors=True,
         )
-        self.model = self.accelerator.prepare(model)
-        self.system_prompt = """
-        Kamu adalah asisten pribadi teknikal bernama Kiara. Tugasmu adalah membantu Dammar, seorang fullstack developer dan AI engineer.
-        Kiara mampu:
-        - Menjawab pertanyaan umum dan teknis secara singkat dan tepat.
-        - Hanya memberikan informasi yang relevan, tidak mengulang atau mengelaborasi terlalu panjang.
-        Gunakan Bahasa Indonesia, nada profesional, lembut, bersahabat dan padat. Jika ada informasi tidak diketahui, katakan "Saya belum mengetahui hal tersebut."
-        """
+        model.resize_token_embeddings(len(self.tokenizer), mean_resizing=False)
+        self.model = PeftModel.from_pretrained(
+            model,
+            adapter_path,
+            device_map="auto",
+            torch_dtype=torch.float16,
+        )
+        self.model = model.to("cuda")
 
-    def _clean_response_gemma2(self, text: str) -> str:
+    def add_system_prompt(self, system_prompt: str):
+        self.system_prompt = system_prompt
+        return self
+
+    def _clean_response(self, text: str) -> str:
         """
         Extract only the assistant's response from the generated text
-        by removing the original prompt and matching the final assistant tag for gemma
+        by removing the original prompt and truncating at <|endofanswer|>
         """
+
+        # Ambil isi antara <|assistant|> dan <|endofanswer|> atau sebelum role lain
         match = re.search(
-            r"<\|assistant\|>\s*(.*?)\s*(?:<end_of_turn>|<eos>|</s>|<\|)",
+            r"<\|assistant\|>\s*(.*?)(?=<\|endofanswer\|>|<\|user\||<\|system\||<\|assistant\||$)",
             text,
             re.DOTALL,
         )
 
         if match:
             cleaned = match.group(1).strip()
-            cleaned = re.sub(r"\n{2,}", "\n", cleaned)
-            return cleaned
+        else:
+            # Fallback jika pattern tidak ketemu
+            cleaned = text.strip()
 
-        return text.strip()
+        # Bersihkan semua special token sisa
+        cleaned = re.sub(r"<\|[^|]*\|>", "", cleaned)
+        cleaned = re.sub(r"</?s>", "", cleaned)  # </s> dan <s>
+        cleaned = cleaned.replace("<eos>", "")
+
+        # Token end lain yang tidak dipakai
+        end_tokens = [
+            "<end_of_turn>",
+            "<|end|>",
+            "<|endoftext|>",
+            "<|im_end|>",
+        ]
+        for token in end_tokens:
+            cleaned = cleaned.replace(token, "")
+
+        # Normalisasi whitespace
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)  # max 2 newline
+        cleaned = re.sub(r"[ \t]+", " ", cleaned)  # multiple space jadi satu
+        cleaned = cleaned.strip()
+
+        return cleaned
 
     def predict(self, prompt: str) -> str:
         messages = []
@@ -101,18 +116,17 @@ class ModelLoader:
             output = self.model.generate(
                 **inputs,
                 max_new_tokens=512,
-                do_sample=True,
-                temperature=0.3,
-                top_p=0.7,
-                pad_token_id=self.tokenizer.eos_token_id,
                 eos_token_id=self.tokenizer.eos_token_id,
+                pad_token_id=self.tokenizer.eos_token_id,
                 no_repeat_ngram_size=3,
                 repetition_penalty=1.2,
+                temperature=0.3,
+                top_p=0.7,
             )
 
         # Get the full generated text
         decoded = self.tokenizer.decode(output[0], skip_special_tokens=False)
 
         # Clean to extract only the assistant's response
-        cleaned = self._clean_response_gemma2(decoded)
+        cleaned = self._clean_response(decoded)
         return cleaned

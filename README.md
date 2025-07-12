@@ -80,8 +80,34 @@ kiara-api/
 ````json
 {
   "code": 200,
-  "message": "Saya telah mempelajari banyak sekali tentang Anda. Kamu adalah seorang Fullstack Developer dan AI Engineer.  Aku akan membantumu dengan berbagai tugas, termasuk menjawab pertanyaan umum, memberikan informasi relevan dan memproses data.  Jika kamu membutuhkan bantuan, jangan ragu untuk bertanya!\n```\n**Penjelasan:**\n* **`",
-  "data": [],
+  "message": "Chat berhasil didapatkan",
+  "data": [
+    {
+      "role": "assistant",
+      "content": "Saya telah mempelajari banyak sekali tentang Anda. Kamu adalah seorang Fullstack Developer dan AI Engineer.  Aku akan membantumu dengan berbagai tugas, termasuk menjawab pertanyaan umum, memberikan informasi relevan dan memproses data.  Jika kamu membutuhkan bantuan, jangan ragu untuk bertanya!\n```\n**Penjelasan:**\n* **`"
+    }
+  ],
+  "error": false
+}
+````
+
+**POST http://127.0.0.1:5123/api/v1/chat/logs**
+
+#### Response
+
+````json
+{
+  "code": 200,
+  "message": "Data Chat Berhasil Didapatkan!",
+  "data": [
+    {
+      "id": 1,
+      "date": "2025-07-12T10:00:00",
+      "questions": "Apa yang anda ketahui tentang saya?",
+      "answers": "Saya telah mempelajari banyak sekali tentang Anda. Kamu adalah seorang Fullstack Developer dan AI Engineer.  Aku akan membantumu dengan berbagai tugas, termasuk menjawab pertanyaan umum, memberikan informasi relevan dan memproses data.  Jika kamu membutuhkan bantuan, jangan ragu untuk bertanya!\n```\n**Penjelasan:**\n* **`"
+    },
+    ...
+  ],
   "error": false
 }
 ````

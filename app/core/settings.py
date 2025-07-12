@@ -9,6 +9,7 @@ from typing import List, Dict
 class Settings(BaseSettings):
     APP_ENV: str = "local"
     INTERNAL_AUTH_TOKEN: str
+    SYSTEM_PROMPT: str
     DB_NAMES: str
 
     DB_CONNECTION: str
@@ -21,6 +22,8 @@ class Settings(BaseSettings):
     BASE_DIR: ClassVar[Path] = Path(__file__).resolve().parent.parent
     ROOT_DIR: ClassVar[Path] = BASE_DIR.parent
     GEMMA_PATH: ClassVar[Path] = ROOT_DIR / "public" / "model"
+    ADAPTER_PATH: ClassVar[Path] = ROOT_DIR / "public" / "adapter" / "kiara_v0.0.1"
+    TOKENIZER_PATH: ClassVar[Path] = ROOT_DIR / "public" / "kiara_tokenizer"
 
     @cached_property
     def db_names(self) -> List[str]:
@@ -57,8 +60,18 @@ class Settings(BaseSettings):
         return self.APP_ENV == "production"
 
     @cached_property
+    def system_prompt(self):
+        return self.SYSTEM_PROMPT
+
+    @cached_property
     def model_loader(self):
-        return ModelLoader(model_path=self.GEMMA_PATH)
+        wrapper = ModelLoader(
+            model_path=self.GEMMA_PATH,
+            tokenizer_path=self.TOKENIZER_PATH,
+            adapter_path=self.ADAPTER_PATH,
+        )
+        wrapper.add_system_prompt(self.SYSTEM_PROMPT)
+        return wrapper
 
     class Config:
         env_file = ".env"

@@ -5,6 +5,7 @@ from app.models.chat import Chat
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from datetime import datetime
+from sqlalchemy import select
 
 router = APIRouter()
 
@@ -28,7 +29,22 @@ async def ask(data: Ask, db: AsyncSession = Depends(get_db("kiara"))):
     await save_chat(db, data.message, response)
     return {
         "code": 200,
-        "message": response,
-        "data": [],
+        "message": "Chat berhasil didapatkan",
+        "data": [
+            {"role": "assistant", "content": response},
+        ],
+        "error": False,
+    }
+
+
+@router.post("/logs")
+async def logs(db: AsyncSession = Depends(get_db("kiara"))):
+    query = select(Chat)
+    result = await db.execute(query)
+    data = result.scalars().all()
+    return {
+        "code": 200,
+        "message": "Data Chat Berhasil Didapatkan!",
+        "data": data,
         "error": False,
     }
